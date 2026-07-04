@@ -114,17 +114,30 @@ export async function stkPush(params: STKPushParams): Promise<STKPushResult> {
     const token = await getDarajaToken();
     const timestamp = darajaTimestamp();
     const password = buildPassword(timestamp);
+    const shortcode = process.env.MPESA_SHORTCODE;
+    const partyb = process.env.MPESA_PARTYB;
+
+    const callbackUrl = process.env.MPESA_CALLBACK_URL;
+    const transactionType =
+      process.env.MPESA_TRANSACTION_TYPE?.trim() || "CustomerPayBillOnline";
+
+    if (!shortcode || !callbackUrl) {
+      return {
+        success: false,
+        error: "MPesa shortcode or callback URL is not configured.",
+      };
+    }
 
     const stkPayload = {
-      BusinessShortCode: process.env.MPESA_SHORTCODE,
+      BusinessShortCode: shortcode,
       Password: password,
       Timestamp: timestamp,
-      TransactionType: "CustomerPayBillOnline",
+      TransactionType: transactionType,
       Amount: amount,
       PartyA: phoneNumber,
-      PartyB: process.env.MPESA_SHORTCODE,
+      PartyB: partyb,
       PhoneNumber: phoneNumber,
-      CallBackURL: process.env.MPESA_CALLBACK_URL,
+      CallBackURL: callbackUrl,
       AccountReference: playlistName || "Playlist",
       TransactionDesc: `Payment for ${playlistName || "Playlist"} by ${fullName}`,
     };

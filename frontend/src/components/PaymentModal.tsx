@@ -51,6 +51,13 @@ const normalizePhone = (raw: string): string | null => {
 const isValidEmail = (email: string): boolean =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+const getApiBaseUrl = (): string => {
+  const configured =
+    import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
+
+  return configured ? configured.replace(/\/$/, "") : "";
+};
+
 const PaymentModal: React.FC<PaymentModalProps> = ({
   isOpen,
   onClose,
@@ -98,7 +105,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch("/api/mpesa/status", {
+        const res = await fetch(`${getApiBaseUrl()}/api/mpesa/status`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ checkoutRequestId }),
@@ -165,7 +172,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     setStatusMessage("Sending STK push to your phone…");
 
     try {
-      const res = await fetch("/api/mpesa/stkpush", {
+      const res = await fetch(`${getApiBaseUrl()}/api/mpesa/stkpush`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
