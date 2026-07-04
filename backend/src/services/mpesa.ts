@@ -189,6 +189,16 @@ export async function stkPush(params: STKPushParams): Promise<STKPushResult> {
     console.error("[mpesa:stkPush] Error:", err);
     return {
       success: false,
+      error:
+        err instanceof Error
+          ? err.message.includes("Failed query")
+            ? "Unable to persist the transaction. Please try again."
+            : err.message
+          : "Internal server error.",
+    };
+    console.error("[mpesa:stkPush] Error:", err);
+    return {
+      success: false,
       error: err instanceof Error ? err.message : "Internal server error.",
     };
   }

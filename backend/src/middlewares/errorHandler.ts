@@ -1,9 +1,19 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from "express";
 
-export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+export const errorHandler = (
+  err: any,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   console.error(err);
-  res.status(err.status || 500).json({
+  const status = err.status || 500;
+  const message = err.message || "Internal Server Error";
+  res.status(status).json({
     success: false,
-    error: err.message || 'Internal Server Error',
+    error:
+      status >= 500 && process.env.NODE_ENV !== "development"
+        ? "Internal Server Error"
+        : message,
   });
 };

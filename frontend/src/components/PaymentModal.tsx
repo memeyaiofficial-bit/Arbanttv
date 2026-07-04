@@ -58,6 +58,19 @@ const getApiBaseUrl = (): string => {
   return configured ? configured.replace(/\/$/, "") : "";
 };
 
+const sanitizeErrorMessage = (rawMessage: unknown, fallback: string) => {
+  if (!rawMessage || typeof rawMessage !== "string") return fallback;
+  const sanitized = rawMessage.trim();
+  if (
+    /failed query|insert into|syntax error|database|internal server error|unauthorized|forbidden/i.test(
+      sanitized,
+    )
+  ) {
+    return fallback;
+  }
+  return sanitized;
+};
+
 const PaymentModal: React.FC<PaymentModalProps> = ({
   isOpen,
   onClose,
@@ -111,9 +124,16 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           body: JSON.stringify({ checkoutRequestId }),
         });
 
-        if (!res.ok) throw new Error("Status check failed");
-
         const data: PaymentStatusResponse = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(
+            sanitizeErrorMessage(
+              (data as any)?.error,
+              "Status check failed. Please try again.",
+            ),
+          );
+        }
 
         if (data.status === "success") {
           setPaymentStatus("success");
@@ -187,7 +207,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       const data: STKPushResponse = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to initiate payment.");
+        throw new Error(
+          sanitizeErrorMessage(
+            data.error,
+            "Failed to initiate payment. Please try again.",
+          ),
+        );
       }
 
       setCheckoutRequestId(data.checkoutRequestId!);
