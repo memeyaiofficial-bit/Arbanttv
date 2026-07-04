@@ -165,19 +165,26 @@ export async function stkPush(params: STKPushParams): Promise<STKPushResult> {
 
     // Persist the transaction to the database
     const transactionId = crypto.randomUUID();
-    await db.insert(transactions).values({
-      id: transactionId,
-      userId: userId || null,
-      checkoutRequestId: stkData.CheckoutRequestID,
-      merchantRequestId: stkData.MerchantRequestID || null,
-      phoneNumber,
-      amount,
-      fullName,
-      email,
-      accountReference: playlistName || "Playlist",
-      type: "playlist_purchase",
-      status: "pending",
-    });
+    try {
+      await db.insert(transactions).values({
+        id: transactionId,
+        userId: userId || null,
+        checkoutRequestId: stkData.CheckoutRequestID,
+        merchantRequestId: stkData.MerchantRequestID || null,
+        phoneNumber,
+        amount,
+        fullName,
+        email,
+        accountReference: playlistName || "Playlist",
+        type: "playlist_purchase",
+        status: "pending",
+      });
+    } catch (dbErr) {
+      console.error(
+        "[mpesa:stkPush] Warning: transaction persistence failed, but STK push succeeded.",
+        dbErr,
+      );
+    }
 
     return {
       success: true,
