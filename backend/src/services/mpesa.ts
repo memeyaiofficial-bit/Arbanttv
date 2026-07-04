@@ -282,11 +282,19 @@ export async function queryPaymentStatus(
   }
 
   try {
-    // 1. Check local DB first
-    const [transaction] = await db
-      .select()
-      .from(transactions)
-      .where(eq(transactions.checkoutRequestId, checkoutRequestId));
+    let transaction;
+    try {
+      [transaction] = await db
+        .select()
+        .from(transactions)
+        .where(eq(transactions.checkoutRequestId, checkoutRequestId));
+    } catch (dbErr) {
+      console.warn(
+        "[mpesa:queryPaymentStatus] Warning: local DB query failed, falling back to Daraja",
+        dbErr,
+      );
+      transaction = undefined;
+    }
 
     if (transaction && transaction.status !== "pending") {
       return {
@@ -321,64 +329,66 @@ export async function queryPaymentStatus(
       });
 
       const queryData = await queryRes.json();
-      const resultCode = queryData.ResultCode;
+      const resultCode = String(queryData.ResultCode ?? "");
+      const resultDesc = queryData.ResultDesc ?? "";
+
+      const updateStatus = async (
+        status: "success" | "cancelled" | "failed",
+        resultCodeValue?: number,
+      ) => {
+        try {
+          await db
+            .update(transactions)
+            .set({
+              status,
+              resultCode: resultCodeValue ?? null,
+              resultDesc: resultDesc || null,
+              updatedAt: new Date(),
+            })
+            .where(eq(transactions.checkoutRequestId, checkoutRequestId));
+        } catch (dbErr) {
+          console.warn(
+            "[mpesa:queryPaymentStatus] Warning: failed to update local transaction status",
+            dbErr,
+          );
+        }
+      };
 
       if (resultCode === "0") {
-        await db
-          .update(transactions)
-          .set({ status: "success", resultCode: 0, updatedAt: new Date() })
-          .where(eq(transactions.checkoutRequestId, checkoutRequestId));
-
+        await updateStatus("success", 0);
         return { success: true, status: "success" };
       }
 
       if (resultCode === "1032") {
-        await db
-          .update(transactions)
-          .set({
-            status: "cancelled",
-            resultCode: 1032,
-            resultDesc: queryData.ResultDesc,
-            updatedAt: new Date(),
-          })
-          .where(eq(transactions.checkoutRequestId, checkoutRequestId));
-
+        await updateStatus("cancelled", 1032);
         return {
           success: true,
           status: "cancelled",
-          message: queryData.ResultDesc,
+          message: resultDesc,
         };
       }
 
-      if (resultCode !== undefined && resultCode !== "1037") {
-        // 1037 = still in flight
-        await db
-          .update(transactions)
-          .set({
-            status: "failed",
-            resultCode: Number(resultCode),
-            resultDesc: queryData.ResultDesc,
-            updatedAt: new Date(),
-          })
-          .where(eq(transactions.checkoutRequestId, checkoutRequestId));
-
+      if (resultCode !== "" && resultCode !== "1037") {
+        await updateStatus("failed", Number(resultCode));
         return {
           success: true,
           status: "failed",
-          message: queryData.ResultDesc,
+          message: resultDesc,
         };
       }
-    } catch {
-      // Daraja query failed — fall through to return pending
+    } catch (darajaErr) {
+      console.warn(
+        "[mpesa:queryPaymentStatus] Warning: Daraja query failed, returning pending",
+        darajaErr,
+      );
     }
 
     return { success: true, status: "pending" };
   } catch (err) {
     console.error("[mpesa:queryPaymentStatus] Error:", err);
     return {
-      success: false,
+      success: true,
       status: "pending",
-      error: "Internal server error.",
     };
   }
 }
