@@ -187,19 +187,18 @@ export async function stkPush(params: STKPushParams): Promise<STKPushResult> {
     };
   } catch (err: unknown) {
     console.error("[mpesa:stkPush] Error:", err);
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === "string"
+          ? err
+          : "Internal server error.";
+
     return {
       success: false,
-      error:
-        err instanceof Error
-          ? err.message.includes("Failed query")
-            ? "Unable to persist the transaction. Please try again."
-            : err.message
-          : "Internal server error.",
-    };
-    console.error("[mpesa:stkPush] Error:", err);
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Internal server error.",
+      error: message.includes("Failed query")
+        ? "Unable to persist the transaction. Please try again."
+        : message,
     };
   }
 }
