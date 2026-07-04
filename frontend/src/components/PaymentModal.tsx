@@ -8,6 +8,7 @@ import {
 } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { sanitizeErrorMessage } from "../lib/utils";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -56,19 +57,6 @@ const getApiBaseUrl = (): string => {
     import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
 
   return configured ? configured.replace(/\/$/, "") : "";
-};
-
-const sanitizeErrorMessage = (rawMessage: unknown, fallback: string) => {
-  if (!rawMessage || typeof rawMessage !== "string") return fallback;
-  const sanitized = rawMessage.trim();
-  if (
-    /failed query|insert into|syntax error|database|internal server error|unauthorized|forbidden/i.test(
-      sanitized,
-    )
-  ) {
-    return fallback;
-  }
-  return sanitized;
 };
 
 const PaymentModal: React.FC<PaymentModalProps> = ({

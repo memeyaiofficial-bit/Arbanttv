@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MdWbSunny, MdDarkMode, MdSearch, MdClose, MdMenu, MdAssignment } from 'react-icons/md';
 import { useTheme } from '../context/ThemeContext';
+import { sanitizeErrorMessage } from '../lib/utils';
 import WaitlistModal from './WaitlistModal';
 
 const CreatorPaymentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -22,11 +23,22 @@ const CreatorPaymentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     }
     setError('');
     setLoading(true);
-    // TODO: integrate your M-Pesa STK push here
-    await new Promise((r) => setTimeout(r, 2000)); // simulate API call
-    setLoading(false);
-    alert('Payment request sent! Check your phone for the M-Pesa prompt.');
-    onClose();
+
+    try {
+      // TODO: integrate your M-Pesa STK push here
+      await new Promise((r) => setTimeout(r, 2000)); // simulate API call
+      alert('Payment request sent! Check your phone for the M-Pesa prompt.');
+      onClose();
+    } catch (err: unknown) {
+      setError(
+        sanitizeErrorMessage(
+          err instanceof Error ? err.message : String(err),
+          'Payment request failed. Please try again.',
+        ),
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
